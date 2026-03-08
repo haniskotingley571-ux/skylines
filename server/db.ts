@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, articles, tags, articleTags, InsertArticle, InsertTag } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,120 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Article queries
+export async function createArticle(data: InsertArticle) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(articles).values(data);
+}
+
+export async function getArticlesByUserId(userId: number, limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(articles)
+    .where(eq(articles.userId, userId))
+    .orderBy(desc(articles.updatedAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getArticleBySlug(slug: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select()
+    .from(articles)
+    .where(and(eq(articles.slug, slug), eq(articles.userId, userId)))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateArticle(id: number, data: Partial<InsertArticle>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(articles).set(data).where(eq(articles.id, id));
+}
+
+export async function deleteArticle(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(articles).where(eq(articles.id, id));
+}
+
+export async function searchArticles(userId: number, query: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(articles)
+    .where(
+      and(
+        eq(articles.userId, userId),
+        or(
+          ilike(articles.title, `%${query}%`),
+          ilike(articles.content, `%${query}%`)
+        )
+      )
+    )
+    .orderBy(desc(articles.updatedAt));
+}
+
+// Tag queries
+export async function createTag(data: InsertTag) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(tags).values(data);
+}
+
+export async function getTagsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(tags).where(eq(tags.userId, userId));
+}
+
+export async function deleteTag(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(tags).where(eq(tags.id, id));
+}
+
+// Article-Tag relations
+export async function addTagToArticle(articleId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(articleTags).values({ articleId, tagId });
+}
+
+export async function removeTagFromArticle(articleId: number, tagId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .delete(articleTags)
+    .where(and(eq(articleTags.articleId, articleId), eq(articleTags.tagId, tagId)));
+}
+
+export async function getArticleStats(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.userId, userId));
+  return {
+    totalArticles: result.length,
+    totalViews: result.reduce((sum, a) => sum + (a.viewCount || 0), 0),
+  };
+}
+
+export async function getRecentArticles(userId: number, limit = 5) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(articles)
+    .where(eq(articles.userId, userId))
+    .orderBy(desc(articles.updatedAt))
+    .limit(limit);
+}
