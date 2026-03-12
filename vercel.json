@@ -3,11 +3,5 @@
   "outputDirectory": "dist/public",
   "env": {
     "NODE_ENV": "production"
-  },
-  "serverless": {
-    "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
   }
 }
