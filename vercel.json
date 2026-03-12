@@ -4,20 +4,10 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "functions": {
-    "dist/index.js": {
+  "serverless": {
+    "api/index.js": {
       "memory": 1024,
       "maxDuration": 60
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/dist/index.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/dist/public/index.html"
-    }
-  ]
+  }
 }
